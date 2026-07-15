@@ -1,0 +1,93 @@
+// This is your Prisma schema file for Velara.
+// Postgres is required in production (attach Vercel Postgres / Neon / Supabase via DATABASE_URL).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id            String   @id @default(cuid())
+  name          String
+  plan          String   @default("starter") // starter | growth | scale
+  stripeCustomerId       String? @unique
+  stripeSubscriptionId   String? @unique
+  stripeSubscriptionStatus String?
+  createdAt     DateTime @default(now())
+
+  users         User[]
+  feedback      Feedback[]
+  plans         ImprovementPlan[]
+  integrations  Integration[]
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  passwordHash   String
+  name           String?
+  role           String   @default("pm") // pm | admin
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime @default(now())
+}
+
+model Feedback {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  customerName   String?
+  customerEmail  String?
+  source         String   // e.g. "email", "review", "support_ticket", "survey", "app_store"
+  content        String
+  sentiment      String?  // positive | neutral | negative (set by AI analysis)
+  theme          String?  // set by AI analysis, e.g. "checkout", "shipping", "pricing"
+  status         String   @default("new") // new | analyzed | linked
+  createdAt      DateTime @default(now())
+
+  planLinks      FeedbackPlanLink[]
+}
+
+model ImprovementPlan {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  title          String
+  description    String
+  theme          String
+  priority       String   // high | medium | low
+  impact         String   // high | medium | low
+  effort         String   // high | medium | low
+  status         String   @default("proposed") // proposed | planned | in_progress | shipped | dismissed
+  githubIssueUrl String?
+  createdAt      DateTime @default(now())
+
+  feedbackLinks  FeedbackPlanLink[]
+}
+
+model FeedbackPlanLink {
+  id          String   @id @default(cuid())
+  feedbackId  String
+  feedback    Feedback @relation(fields: [feedbackId], references: [id])
+  planId      String
+  plan        ImprovementPlan @relation(fields: [planId], references: [id])
+
+  @@unique([feedbackId, planId])
+}
+
+model Integration {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  provider       String   // github | vercel
+  accessToken    String
+  refreshToken   String?
+  accountLabel   String?  // e.g. github org/user login, vercel team name
+  connectedAt    DateTime @default(now())
+
+  @@unique([organizationId, provider])
+}
