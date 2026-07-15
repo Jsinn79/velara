@@ -4,7 +4,9 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import OpenAI from "openai";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+function getOpenAI() {
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
 // POST /api/analyze — runs AI analysis over all "new" feedback for the org:
 // 1. classifies sentiment + theme for each item
@@ -34,7 +36,7 @@ ${newFeedback.map((f) => `- id=${f.id}: ${f.content}`).join("\n")}
 
 Respond with ONLY a JSON array, no prose.`;
 
-  const classifyRes = await openai.chat.completions.create({
+  const classifyRes = await getOpenAI().chat.completions.create({
     model: "gpt-4o-mini",
     messages: [{ role: "user", content: classifyPrompt }],
     temperature: 0,
@@ -76,7 +78,7 @@ Return ONLY JSON: {"title": string, "description": string (2-4 sentences, concre
 Feedback:
 ${items.map((f) => `- ${f.content}`).join("\n")}`;
 
-    const planRes = await openai.chat.completions.create({
+    const planRes = await getOpenAI().chat.completions.create({
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: planPrompt }],
       temperature: 0.3,
